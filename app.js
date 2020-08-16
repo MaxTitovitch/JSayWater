@@ -165,7 +165,6 @@ app.post("/set-photo", urlencodedParser, function(req, res){
 
 });
 
-
 app.post("/get-info", urlencodedParser, function(req, res){
   req.app.locals.collection.findOne(
       {token: req.body.token},
@@ -193,6 +192,49 @@ app.post("/set-info", urlencodedParser, function(req, res){
   req.app.locals.collection.findOneAndUpdate(
       {token: req.body.token},
       { $set: {photo: req.body.photo, name: req.body.name}},
+      {
+        returnOriginal: false
+      },
+      function(err, result){
+        if(err) {
+          res.status(400).send({status: 'error', phone: 'Server error'});
+        } else if(!result) {
+          res.status(400).send({status: 'error', code: 'Incorrect authentication'});
+        }else {
+          res.send({status: 'success'});
+        }
+      }
+  );
+});
+
+app.post("/get-sound", urlencodedParser, function(req, res){
+  req.app.locals.collection.findOne(
+      {token: req.body.token},
+      function(err, result){
+        if(err) {
+          res.status(400).send({status: 'error', phone: 'Server error'});
+        } else if(!result) {
+          res.status(400).send({status: 'error', code: 'Incorrect authentication'});
+        }else {
+          res.send({status: 'success', sound: result.sound});
+        }
+      }
+  );
+});
+
+app.post("/set-sound", urlencodedParser, function(req, res){
+  let validation = Validator.validateBool(req.body.sound, 'Sound');
+  if(validation !== true) {
+    res.status(400).send(Object.assign({status: 'error', },validation));
+    return;
+  }
+
+  let sound = req.body.sound;
+  sound = sound === 'true' ? true : (sound === 'false' ? false : sound);
+
+  req.app.locals.collection.findOneAndUpdate(
+      {token: req.body.token},
+      { $set: {sound: sound}},
       {
         returnOriginal: false
       },

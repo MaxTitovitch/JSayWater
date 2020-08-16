@@ -16,6 +16,10 @@ module.exports = class Validator {
     return Validator.validateTemplate(value, name, 'string', () => value.length !== 6);
   }
 
+  static validateBool (value, name) {
+    return value === true || value === false || value === 'false' || value === 'true' ? true : {[name.toLowerCase()]: `${name} isn't boolean`};;
+  }
+
   static validateTemplate(value, name, type, isNotCorrect) {
     if(typeof (value) !== type) {
       return {[name.toLowerCase()]: `${name} is required`};
