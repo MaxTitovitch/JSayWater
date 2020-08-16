@@ -5,7 +5,7 @@ module.exports = class Validator {
   }
 
   static validatePhone (value, name) {
-    return Validator.validateTemplate(value, name, 'string', () => !/^((8|\\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$/.test(value));
+    return Validator.validateTemplate(value, name, 'string', () => !/^\+[\d]{10,13}$/.test(value));
   }
 
   static validateTemplate(value, name, type, isNotCorrect) {

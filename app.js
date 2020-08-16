@@ -59,10 +59,10 @@ app.post("/register", urlencodedParser, function(req, res){
   const collection = req.app.locals.collection;
   collection.insertOne(user, function(err, result){
     if(err) {
-      res.status(400).send(err);
+      res.status(400).send({phone: 'Phone isn\'t unique'});
     } else {
       // TODO: Sender.send(user.phone, user.code);
-      res.send('');
+      res.send('Success');
     }
   });
 
