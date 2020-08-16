@@ -166,6 +166,48 @@ app.post("/set-photo", urlencodedParser, function(req, res){
 });
 
 
+app.post("/get-info", urlencodedParser, function(req, res){
+  req.app.locals.collection.findOne(
+      {token: req.body.token},
+      function(err, result){
+        if(err) {
+          res.status(400).send({status: 'error', phone: 'Server error'});
+        } else if(!result) {
+          res.status(400).send({status: 'error', code: 'Incorrect authentication'});
+        }else {
+          res.send({status: 'success', name: result.name, phone: result.phone, photo: result.photo});
+        }
+      }
+  );
+});
+
+app.post("/set-info", urlencodedParser, function(req, res){
+  let validation = [Validator.validateString(req.body.name, 'Name'), Validator.validatePhone(req.body.phone, 'Phone')];
+  if(validation[0] !== true || validation[1] !== true) {
+    if(validation[0] === true) validation[0] = {};
+    if(validation[1] === true) validation[1] = {};
+    res.status(400).send( Object.assign({status: 'error' }, validation[0], validation[1]));
+    return;
+  }
+
+  req.app.locals.collection.findOneAndUpdate(
+      {token: req.body.token},
+      { $set: {photo: req.body.photo, name: req.body.name}},
+      {
+        returnOriginal: false
+      },
+      function(err, result){
+        if(err) {
+          res.status(400).send({status: 'error', phone: 'Server error'});
+        } else if(!result) {
+          res.status(400).send({status: 'error', code: 'Incorrect authentication'});
+        }else {
+          res.send({status: 'success'});
+        }
+      }
+  );
+});
+
 process.on("SIGINT", () => {
   dbClient.close();
   process.exit();
