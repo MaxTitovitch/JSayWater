@@ -36,35 +36,87 @@ mongoClient.connect(function(err, client){
   });
 });
 
-app.post("/register", urlencodedParser, function(req, res){
+app.post("/preregister", urlencodedParser, function(req, res){
   let validation = [Validator.validateString(req.body.name, 'Name'), Validator.validatePhone(req.body.phone, 'Phone')];
   if(validation[0] !== true || validation[1] !== true) {
     if(validation[0] === true) validation[0] = {};
     if(validation[1] === true) validation[1] = {};
-    res.status(400).send(Object.assign(validation[0], validation[1]));
+    res.status(400).send( Object.assign({status: 'success' }, validation[0], validation[1]));
     return;
   }
-
-  let date = new Date();
 
   const user = Service.getUser();
   user.name = req.body.name;
   user.phone =  req.body.phone;
   user.code =  Service.createCode();
-  user.token =  Service.createToken();
-  user.date_of_preregistration = date;
-  date.setDate(date.getDate() + 30);
-  user.date_of_next_send = date;
+  let date = new Date();
+  date.setHours(date.getHours() + 2);
+  user.date_of_preregistration_end = parseInt(date.getTime()/1000);
 
-  const collection = req.app.locals.collection;
-  collection.insertOne(user, function(err, result){
+  req.app.locals.collection.insertOne(user, function(err, result){
     if(err) {
-      res.status(400).send({phone: 'Phone isn\'t unique'});
+      res.status(400).send({status: 'error', phone: 'Phone isn\'t unique'});
     } else {
       // TODO: Sender.send(user.phone, user.code);
-      res.send('Success');
+      res.send({status: 'success'});
     }
   });
+
+});
+
+app.post("/register", urlencodedParser, function(req, res){
+  let validation = Validator.validateCode(req.body.code, 'Code');
+  if(validation !== true) {
+    res.status(400).send(Object.assign({status: 'success', },validation));
+    return;
+  }
+
+  let date = new Date();
+  date.setDate(date.getDate() + 30);
+
+  req.app.locals.collection.findOneAndUpdate(
+      {code: req.body.code, date_of_preregistration_end: {$gte: parseInt(new Date().getTime()/1000)}},
+      { $set: {token: Service.createToken(), date_of_next_send: parseInt(date.getTime()/1000), code: null}},
+      {
+        returnOriginal: false
+      },
+      function(err, result){
+        console.log(result);
+        if(err) {
+          res.status(400).send({status: 'error', phone: 'Server error'});
+        }else if(result.lastErrorObject.n !== 1) {
+          res.status(400).send({status: 'error', code: 'Incorrect data'});
+        } else {
+          res.send({status: 'success', token: result.value.token});
+        }
+      }
+  );
+
+});
+
+
+app.post("/auth", urlencodedParser, function(req, res){
+  let validation = [Validator.validateString(req.body.name, 'Name'), Validator.validatePhone(req.body.phone, 'Phone')];
+  if(validation[0] !== true || validation[1] !== true) {
+    if(validation[0] === true) validation[0] = {};
+    if(validation[1] === true) validation[1] = {};
+    res.status(400).send( Object.assign({status: 'success' }, validation[0], validation[1]));
+    return;
+  }
+
+  req.app.locals.collection.findOne(
+      {phone: req.body.phone, name: req.body.name},
+      function(err, result){
+        console.log(result);
+        if(err) {
+          res.status(400).send({status: 'error', phone: 'Server error'});
+        } else if(!result) {
+          res.status(400).send({status: 'error', phone: 'User doesn\'t exist data'});
+        }else {
+          res.send({status: 'success', token: result.token});
+        }
+      }
+  );
 
 });
 

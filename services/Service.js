@@ -5,9 +5,9 @@ module.exports = class Service {
       name: '',
       phone: '',
       code: null,
-      date_of_preregistration: '',
+      date_of_preregistration_end: '',
       photo: null,
-      token: '',
+      token: null,
       sound: false,
       notification: false,
       notification_time: null,
@@ -18,7 +18,7 @@ module.exports = class Service {
   static createCode () {
     let min = 100000;
     let max = 999999;
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+    return (Math.floor(Math.random() * (max - min + 1)) + min).toString();
   }
 
   static createToken () {

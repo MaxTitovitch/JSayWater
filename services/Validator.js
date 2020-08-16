@@ -8,6 +8,10 @@ module.exports = class Validator {
     return Validator.validateTemplate(value, name, 'string', () => !/^\+[\d]{10,13}$/.test(value));
   }
 
+  static validateCode (value, name) {
+    return Validator.validateTemplate(value, name, 'string', () => value.length !== 6);
+  }
+
   static validateTemplate(value, name, type, isNotCorrect) {
     if(typeof (value) !== type) {
       return {[name.toLowerCase()]: `${name} is required`};
