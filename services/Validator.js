@@ -4,6 +4,10 @@ module.exports = class Validator {
     return Validator.validateTemplate(value, name, 'string', () => value.length <= 0 || value.length > 255 );
   }
 
+  static validateText (value, name) {
+    return Validator.validateTemplate(value, name, 'string', () => value.length <= 0 || value.length > 1000 );
+  }
+
   static validatePhone (value, name) {
     return Validator.validateTemplate(value, name, 'string', () => !/^\+[\d]{10,13}$/.test(value));
   }

@@ -41,7 +41,7 @@ app.post("/preregister", urlencodedParser, function(req, res){
   if(validation[0] !== true || validation[1] !== true) {
     if(validation[0] === true) validation[0] = {};
     if(validation[1] === true) validation[1] = {};
-    res.status(400).send( Object.assign({status: 'success' }, validation[0], validation[1]));
+    res.status(400).send( Object.assign({status: 'error' }, validation[0], validation[1]));
     return;
   }
 
@@ -67,7 +67,7 @@ app.post("/preregister", urlencodedParser, function(req, res){
 app.post("/register", urlencodedParser, function(req, res){
   let validation = Validator.validateCode(req.body.code, 'Code');
   if(validation !== true) {
-    res.status(400).send(Object.assign({status: 'success', },validation));
+    res.status(400).send(Object.assign({status: 'error', },validation));
     return;
   }
 
@@ -81,7 +81,6 @@ app.post("/register", urlencodedParser, function(req, res){
         returnOriginal: false
       },
       function(err, result){
-        console.log(result);
         if(err) {
           res.status(400).send({status: 'error', phone: 'Server error'});
         }else if(result.lastErrorObject.n !== 1) {
@@ -94,20 +93,18 @@ app.post("/register", urlencodedParser, function(req, res){
 
 });
 
-
 app.post("/auth", urlencodedParser, function(req, res){
   let validation = [Validator.validateString(req.body.name, 'Name'), Validator.validatePhone(req.body.phone, 'Phone')];
   if(validation[0] !== true || validation[1] !== true) {
     if(validation[0] === true) validation[0] = {};
     if(validation[1] === true) validation[1] = {};
-    res.status(400).send( Object.assign({status: 'success' }, validation[0], validation[1]));
+    res.status(400).send( Object.assign({status: 'error' }, validation[0], validation[1]));
     return;
   }
 
   req.app.locals.collection.findOne(
       {phone: req.body.phone, name: req.body.name},
       function(err, result){
-        console.log(result);
         if(err) {
           res.status(400).send({status: 'error', phone: 'Server error'});
         } else if(!result) {
@@ -119,6 +116,55 @@ app.post("/auth", urlencodedParser, function(req, res){
   );
 
 });
+
+app.post("/restore", urlencodedParser, function(req, res){
+  let validation = Validator.validatePhone(req.body.phone, 'Phone');
+  if(validation !== true) {
+    res.status(400).send( Object.assign({status: 'error' }, validation));
+    return;
+  }
+
+  req.app.locals.collection.findOne(
+      {phone: req.body.phone},
+      function(err, result){
+        if(err) {
+          res.status(400).send({status: 'error', phone: 'Server error'});
+        } else if(!result) {
+          res.status(400).send({status: 'error', phone: 'User doesn\'t exist data'});
+        }else {
+          res.send({status: 'success', name: result.name});
+        }
+      }
+  );
+
+});
+
+app.post("/set-photo", urlencodedParser, function(req, res){
+  let validation = Validator.validateText(req.body.photo, 'Photo');
+  if(validation !== true) {
+    res.status(400).send(Object.assign({status: 'error', },validation));
+    return;
+  }
+
+  req.app.locals.collection.findOneAndUpdate(
+      {token: req.body.token},
+      { $set: {photo: req.body.photo}},
+      {
+        returnOriginal: false
+      },
+      function(err, result){
+        if(err) {
+          res.status(400).send({status: 'error', phone: 'Server error'});
+        } else if(result.lastErrorObject.n !== 1) {
+          res.status(400).send({status: 'error', code: 'Incorrect authentication'});
+        } else {
+          res.send({status: 'success'});
+        }
+      }
+  );
+
+});
+
 
 process.on("SIGINT", () => {
   dbClient.close();
