@@ -11,9 +11,33 @@ paths:
       operationId: post-preregister
       responses:
         '200':
-          description: '{"status": "success"}'
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                required:
+                  - status
         '400':
-          description: '{"status": "error", "param_name": "Error message"}'
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  name:
+                    type: string
+                  phone:
+                    type: string
+                  fcmtoken:
+                    type: string
+                required:
+                  - status
       description: 'Проверяет, есть ли такие аккаунты, если нет - то делает пререгистрацию, пре - потому что в следующем запросе будет код-подтверждение на регистрацию, а также отправляет код в приложение через FCM-токен, полученный в данном запросе'
       parameters:
         - schema:
@@ -31,5 +55,38 @@ paths:
           in: query
           name: fcmtoken
           description: FCM-токен
+  /register:
+    post:
+      summary: ''
+      operationId: post-register
+      responses:
+        '200':
+          description: '{status: ''success'', token: result.value.token}'
+      description: 'Проверяет корректность кода, и если он правильный - то регистрирует юзера, который отправил заявку на регистрацию. '
+      parameters:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                required:
+                  - status
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  code:
+                    type: string
+                required:
+                  - status
 components:
   schemas: {}
