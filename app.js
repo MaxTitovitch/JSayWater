@@ -120,7 +120,7 @@ app.post("/auth", urlencodedParser, function(req, res){
 
 });
 
-app.post("/restore", urlencodedParser, function(req, res){
+app.get("/restore", urlencodedParser, function(req, res){
   let validation = Validator.validatePhone(req.body.phone, 'Phone');
   if(validation !== true) {
     res.status(400).send( Object.assign({status: 'error' }, validation));
@@ -157,9 +157,9 @@ app.post("/set-photo", urlencodedParser, function(req, res){
       },
       function(err, result){
         if(err) {
-          res.status(400).send({status: 'error', phone: 'Server error'});
+          res.status(400).send({status: 'error', photo: 'Server error'});
         } else if(result.lastErrorObject.n !== 1) {
-          res.status(400).send({status: 'error', code: 'Incorrect authentication'});
+          res.status(400).send({status: 'error', photo: 'Incorrect authentication'});
         } else {
           res.send({status: 'success'});
         }
@@ -168,14 +168,29 @@ app.post("/set-photo", urlencodedParser, function(req, res){
 
 });
 
-app.post("/get-info", urlencodedParser, function(req, res){
+app.get("/get-photo", urlencodedParser, function(req, res){
+  req.app.locals.collection.findOne(
+    {token: req.body.token},
+    function(err, result){
+      if(err) {
+        res.status(400).send({status: 'error', phone: 'Server error'});
+      } else if(!result) {
+        res.status(400).send({status: 'error', phone: 'Incorrect authentication'});
+      }else {
+        res.send({status: 'success', photo: result.photo});
+      }
+    }
+  );
+});
+
+app.get("/get-info", urlencodedParser, function(req, res){
   req.app.locals.collection.findOne(
       {token: req.body.token},
       function(err, result){
         if(err) {
           res.status(400).send({status: 'error', phone: 'Server error'});
         } else if(!result) {
-          res.status(400).send({status: 'error', code: 'Incorrect authentication'});
+          res.status(400).send({status: 'error', phone: 'Incorrect authentication'});
         }else {
           res.send({status: 'success', name: result.name, phone: result.phone, photo: result.photo});
         }
@@ -202,7 +217,7 @@ app.post("/set-info", urlencodedParser, function(req, res){
         if(err) {
           res.status(400).send({status: 'error', phone: 'Server error'});
         } else if(!result) {
-          res.status(400).send({status: 'error', code: 'Incorrect authentication'});
+          res.status(400).send({status: 'error', phone: 'Incorrect authentication'});
         }else {
           res.send({status: 'success'});
         }
@@ -210,14 +225,14 @@ app.post("/set-info", urlencodedParser, function(req, res){
   );
 });
 
-app.post("/get-sound", urlencodedParser, function(req, res){
+app.get("/get-sound", urlencodedParser, function(req, res){
   req.app.locals.collection.findOne(
       {token: req.body.token},
       function(err, result){
         if(err) {
           res.status(400).send({status: 'error', phone: 'Server error'});
         } else if(!result) {
-          res.status(400).send({status: 'error', code: 'Incorrect authentication'});
+          res.status(400).send({status: 'error', phone: 'Incorrect authentication'});
         }else {
           res.send({status: 'success', sound: result.sound});
         }
@@ -245,7 +260,7 @@ app.post("/set-sound", urlencodedParser, function(req, res){
         if(err) {
           res.status(400).send({status: 'error', phone: 'Server error'});
         } else if(!result) {
-          res.status(400).send({status: 'error', code: 'Incorrect authentication'});
+          res.status(400).send({status: 'error', phone: 'Incorrect authentication'});
         }else {
           res.send({status: 'success'});
         }
@@ -253,14 +268,14 @@ app.post("/set-sound", urlencodedParser, function(req, res){
   );
 });
 
-app.post("/get-notification", urlencodedParser, function(req, res){
+app.get("/get-notification", urlencodedParser, function(req, res){
   req.app.locals.collection.findOne(
       {token: req.body.token},
       function(err, result){
         if(err) {
           res.status(400).send({status: 'error', phone: 'Server error'});
         } else if(!result) {
-          res.status(400).send({status: 'error', code: 'Incorrect authentication'});
+          res.status(400).send({status: 'error', phone: 'Incorrect authentication'});
         }else {
           res.send({status: 'success', notification: result.notification, notification_time: result.notification_time});
         }
@@ -291,7 +306,7 @@ app.post("/set-notification", urlencodedParser, function(req, res){
         if(err) {
           res.status(400).send({status: 'error', phone: 'Server error'});
         } else if(!result) {
-          res.status(400).send({status: 'error', code: 'Incorrect authentication'});
+          res.status(400).send({status: 'error', phone: 'Incorrect authentication'});
         }else {
           res.send({status: 'success'});
         }
@@ -306,7 +321,7 @@ app.post("/congratulation", urlencodedParser, function(req, res){
         if(err) {
           res.status(400).send({status: 'error', phone: 'Server error'});
         } else if(!result) {
-          res.status(400).send({status: 'error', code: 'Incorrect authentication'});
+          res.status(400).send({status: 'error', phone: 'Incorrect authentication'});
         } else {
           let date_of_next_send = result.date_of_next_send;
           if (date_of_next_send <= parseInt(new Date().getTime()/1000) && date_of_next_send !== null) {
@@ -318,7 +333,7 @@ app.post("/congratulation", urlencodedParser, function(req, res){
                   if(err) {
                     res.status(400).send({status: 'error', phone: 'Server error'});
                   } else if(!result) {
-                    res.status(400).send({status: 'error', code: 'Incorrect authentication'});
+                    res.status(400).send({status: 'error', phone: 'Incorrect authentication'});
                   }else {
                     res.send({status: 'success', result: true});
                   }
