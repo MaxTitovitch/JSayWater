@@ -9,6 +9,7 @@ module.exports = class Service {
       date_of_preregistration_end: '',
       photo: null,
       token: null,
+      fcmtoken: null,
       sound: false,
       notification: false,
       notification_time: null,

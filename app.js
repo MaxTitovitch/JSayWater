@@ -3,51 +3,54 @@ const bodyParser = require("body-parser");
 const MongoClient = require("mongodb").MongoClient;
 const Service = require("./services/Service");
 const Validator = require("./services/Validator");
+const Sender = require("./services/Sender");
 
 const app = express();
 const urlencodedParser = bodyParser.urlencoded({extended: false});
 const mongoClient = new MongoClient("mongodb://localhost:27017/", { useNewUrlParser: true, useUnifiedTopology: true });
 let dbClient;
-
-// app.get("/", function(request, response){
-//   response.send("Главная страница");
-// });
-//
-// app.get("/register", urlencodedParser, function (request, response) {
-//   response.sendFile(__dirname + "/register.html");
-// });
-//
-// app.post("/register", urlencodedParser, function (request, response) {
-//   if(!request.body) {
-//     return response.sendStatus(400);
-//   }
-//   console.log(request.body);
-//   response.send(`${request.body.userName} - ${request.body.userAge}`);
-// });
+process.env.TZ = 'Europe/Moscow'
 
 mongoClient.connect(function(err, client){
   if(err) {
-    return console.log(err);
+    return console.error(err);
   }
   dbClient = client;
   app.locals.collection = client.db("db").collection("users");
   app.listen(3000, function(){
-    console.log("Сервер запущен...");
+    console.log(new Date().toISOString() + ": Server run...");
   });
 });
 
+var CronJob = require('cron').CronJob;
+var job = new CronJob('0 */1 * * * *', function() {
+  let notification_time = new Date().toLocaleTimeString().substr(0,5);
+  app.locals.collection.find({notification_time: notification_time, sound: true, notification: true}).toArray(function(err, results){
+    if(results.length > 0) {
+      console.log(new Date().toISOString() + ": Messages sent");
+      for (let i = 0; i < results.length; i++) {
+        Sender.send(results[i].fcmtoken,  'Message');
+      }
+    }
+  });
+});
+job.start();
+
 app.post("/preregister", urlencodedParser, function(req, res){
-  let validation = [Validator.validateString(req.body.name, 'Name'), Validator.validatePhone(req.body.phone, 'Phone')];
+  let validation = [Validator.validateString(req.body.name, 'Name'), Validator.validatePhone(req.body.phone, 'Phone'),
+    Validator.validateText(req.body.fcmtoken, 'FCMToken')];
   if(validation[0] !== true || validation[1] !== true) {
     if(validation[0] === true) validation[0] = {};
     if(validation[1] === true) validation[1] = {};
-    res.status(400).send( Object.assign({status: 'error' }, validation[0], validation[1]));
+    if(validation[2] === true) validation[2] = {};
+    res.status(400).send( Object.assign({status: 'error' }, validation[0], validation[1], validation[2]));
     return;
   }
 
   const user = Service.getUser();
   user.name = req.body.name;
   user.phone =  req.body.phone;
+  user.fcmtoken =  req.body.fcmtoken;
   user.code =  Service.createCode();
   let date = new Date();
   date.setHours(date.getHours() + 2);
@@ -57,7 +60,7 @@ app.post("/preregister", urlencodedParser, function(req, res){
     if(err) {
       res.status(400).send({status: 'error', phone: 'Phone isn\'t unique'});
     } else {
-      // TODO: Sender.send(user.phone, user.code);
+      Sender.send(user.fcmtoken,  user.code);
       res.send({status: 'success'});
     }
   });
@@ -305,13 +308,11 @@ app.post("/congratulation", urlencodedParser, function(req, res){
         } else if(!result) {
           res.status(400).send({status: 'error', code: 'Incorrect authentication'});
         } else {
-          let date_of_next_send = result.date_of_next_send, date = new Date();
-          if (date_of_next_send <= parseInt(new Date().getTime()/1000)) {
-            date.setTime(date_of_next_send * 1000);
-            date.setDate(date.getDate() + 30);
+          let date_of_next_send = result.date_of_next_send;
+          if (date_of_next_send <= parseInt(new Date().getTime()/1000) && date_of_next_send !== null) {
             req.app.locals.collection.findOneAndUpdate(
                 {token: req.body.token},
-                { $set: {date_of_next_send: parseInt(date.getTime()/1000)}},
+                { $set: {date_of_next_send: null}},
                 {returnOriginal: false},
                 function(err, result){
                   if(err) {
