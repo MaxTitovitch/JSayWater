@@ -20,12 +20,23 @@ module.exports = class Validator {
     return value === true || value === false || value === 'false' || value === 'true' ? true : {[name.toLowerCase()]: `${name} isn't boolean`};;
   }
 
-  static validateTemplate(value, name, type, isNotCorrect) {
+  static validateTime (value, name) {
+    return Validator.validateTemplate(value, name, 'string', () => !/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/.test(value));
+  }
+
+  static validateEmail (value, name) {
+    return Validator.validateTemplate(value, name, 'string', () => !/^([a-z0-9_-]+\.)*[a-z0-9_-]+@[a-z0-9_-]+(\.[a-z0-9_-]+)*\.[a-z]{2,6}$/.test(value), false);
+  }
+
+  static validateTemplate(value, name, type, isNotCorrect, required = true) {
     if(typeof (value) !== type) {
-      return {[name.toLowerCase()]: `${name} is required`};
+      if(!required && value === undefined) {
+        return true;
+      }
+      return {[name.toLowerCase().split(' ').join('_')]: `${name} is required`};
     }
     if(isNotCorrect()) {
-      return {[name.toLowerCase()]: `${name} isn't correct`};
+      return {[name.toLowerCase().split(' ').join('_')]: `${name} isn't correct`};
     }
     return true;
   }

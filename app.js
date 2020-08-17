@@ -148,7 +148,7 @@ app.post("/set-photo", urlencodedParser, function(req, res){
 
   req.app.locals.collection.findOneAndUpdate(
       {token: req.body.token},
-      { $set: {photo: req.body.photo}},
+      { $set: {photo: req.body.photo === 'null' ? null : req.body.photo}},
       {
         returnOriginal: false
       },
@@ -248,6 +248,105 @@ app.post("/set-sound", urlencodedParser, function(req, res){
         }
       }
   );
+});
+
+app.post("/get-notification", urlencodedParser, function(req, res){
+  req.app.locals.collection.findOne(
+      {token: req.body.token},
+      function(err, result){
+        if(err) {
+          res.status(400).send({status: 'error', phone: 'Server error'});
+        } else if(!result) {
+          res.status(400).send({status: 'error', code: 'Incorrect authentication'});
+        }else {
+          res.send({status: 'success', notification: result.notification, notification_time: result.notification_time});
+        }
+      }
+  );
+});
+
+app.post("/set-notification", urlencodedParser, function(req, res){
+  let validation = [Validator.validateBool(req.body.notification, 'Notification'),
+    Validator.validateTime(req.body.notification_time, 'Notification time')];
+  if(validation[0] !== true || validation[1] !== true) {
+    if(validation[0] === true) validation[0] = {};
+    if(validation[1] === true) validation[1] = {};
+    res.status(400).send( Object.assign({status: 'error' }, validation[0], validation[1]));
+    return;
+  }
+
+  let notification = req.body.notification;
+  notification = notification === 'true' ? true : (notification === 'false' ? false : notification);
+
+  req.app.locals.collection.findOneAndUpdate(
+      {token: req.body.token},
+      { $set: {notification: notification, notification_time: notification !== false ? req.body.notification_time : null}},
+      {
+        returnOriginal: false
+      },
+      function(err, result){
+        if(err) {
+          res.status(400).send({status: 'error', phone: 'Server error'});
+        } else if(!result) {
+          res.status(400).send({status: 'error', code: 'Incorrect authentication'});
+        }else {
+          res.send({status: 'success'});
+        }
+      }
+  );
+});
+
+app.post("/congratulation", urlencodedParser, function(req, res){
+  req.app.locals.collection.findOne(
+      {token: req.body.token},
+      function(err, result){
+        if(err) {
+          res.status(400).send({status: 'error', phone: 'Server error'});
+        } else if(!result) {
+          res.status(400).send({status: 'error', code: 'Incorrect authentication'});
+        } else {
+          let date_of_next_send = result.date_of_next_send, date = new Date();
+          if (date_of_next_send <= parseInt(new Date().getTime()/1000)) {
+            date.setTime(date_of_next_send * 1000);
+            date.setDate(date.getDate() + 30);
+            req.app.locals.collection.findOneAndUpdate(
+                {token: req.body.token},
+                { $set: {date_of_next_send: parseInt(date.getTime()/1000)}},
+                {returnOriginal: false},
+                function(err, result){
+                  if(err) {
+                    res.status(400).send({status: 'error', phone: 'Server error'});
+                  } else if(!result) {
+                    res.status(400).send({status: 'error', code: 'Incorrect authentication'});
+                  }else {
+                    res.send({status: 'success', result: true});
+                  }
+                }
+            );
+          } else {
+            res.send({status: 'success', result: false});
+          }
+        }
+      }
+  );
+});
+
+
+app.post("/support", urlencodedParser, function(req, res){
+  let validation = [Validator.validateText(req.body.message, 'Message'), Validator.validateEmail(req.body.email, 'Email')];
+  if(validation[0] !== true || validation[1] !== true) {
+    if(validation[0] === true) validation[0] = {};
+    if(validation[1] === true) validation[1] = {};
+    res.status(400).send( Object.assign({status: 'error' }, validation[0], validation[1]));
+    return;
+  }
+
+  Service.sendEmail(req.body.message, req.body.email ).then((response) => {
+      res.send({status: 'success'});
+  }).catch((error) => {
+      res.status(400).send({status: 'error', email: 'Server error'});
+  });
+
 });
 
 process.on("SIGINT", () => {

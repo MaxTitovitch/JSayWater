@@ -1,3 +1,4 @@
+const nodemailer = require('nodemailer');
 
 module.exports = class Service {
   static getUser() {
@@ -29,4 +30,22 @@ module.exports = class Service {
     return Math.random().toString(36).substr(2, 8);
   }
 
-}
+  static sendEmail(message, email) {
+    let transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'sportcompanyminsk@gmail.com',
+        pass: 'awesomemax1998'
+      }
+    });
+
+    return transporter.sendMail({
+      from: '"JSay" <admin@jsay.com>',
+      to: "maxtitovitch@mail.ru",
+      subject: "New request to Support",
+      html: `<p><strong>From:</strong> ${email ? email : '-'}</p><p><strong>Message:</strong> ${message}</p>`
+    });
+
+  }
+
+};
