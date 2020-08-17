@@ -1,0 +1,35 @@
+openapi: 3.0.0
+info:
+  title: JSay API
+  version: '1.0'
+servers:
+  - url: 'http://localhost:3000'
+paths:
+  /preregister:
+    post:
+      summary: ''
+      operationId: post-preregister
+      responses:
+        '200':
+          description: '{"status": "success"}'
+        '400':
+          description: '{"status": "error", "param_name": "Error message"}'
+      description: 'Проверяет, есть ли такие аккаунты, если нет - то делает пререгистрацию, пре - потому что в следующем запросе будет код-подтверждение на регистрацию, а также отправляет код в приложение через FCM-токен, полученный в данном запросе'
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: phone
+          description: Номер пользователя
+        - schema:
+            type: string
+          in: query
+          name: name
+          description: Имя пользователя
+        - schema:
+            type: string
+          in: query
+          name: fcmtoken
+          description: FCM-токен
+components:
+  schemas: {}
