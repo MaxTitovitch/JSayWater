@@ -39,7 +39,7 @@ module.exports = class Service {
         pass: 'awesomemax1998'
       }
     });
-
+    
     return transporter.sendMail({
       from: '"JSay" <admin@jsay.com>',
       to: "maxtitovitch@mail.ru",
