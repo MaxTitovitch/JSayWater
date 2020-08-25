@@ -26,7 +26,7 @@ module.exports = class Service {
   static createToken () {
     return Service.createShortToken() + Service.createShortToken() + Service.createShortToken() + Service.createShortToken();
   }
-
+  
   static createShortToken() {
     return Math.random().toString(36).substr(2, 8);
   }
@@ -48,5 +48,5 @@ module.exports = class Service {
     });
 
   }
-
+  
 };

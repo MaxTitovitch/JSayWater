@@ -5,7 +5,7 @@ let fcm = new FCM(serverKey);
 
 module.exports = class Service {
   static send(deviceId, code) {
-
+    
     let message = { //this may vary according to the message type (single recipient, multicast, topic, et cetera)
       to: deviceId,
 
@@ -23,5 +23,5 @@ module.exports = class Service {
       }
     });
   }
-
+  
 };
