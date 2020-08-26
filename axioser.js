@@ -15,7 +15,7 @@ const formHeaders = form.getHeaders();
 axios.get('http://localhost:3000/get-photo', form, {
     headers: {
         ...formHeaders,
-        'Content-Type': 'multipart/form-data'
+        'Content-Type': 'application/x-www-form-urlencoded'
     },
 })
     .then(response => console.log(response))

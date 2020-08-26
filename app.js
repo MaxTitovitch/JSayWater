@@ -8,7 +8,7 @@ const formData = require("express-form-data");
 const os = require("os");
 
 const app = express();
-const urlencodedParser = bodyParser.urlencoded({extended: true});
+const urlencodedParser = bodyParser.urlencoded({extended: false});
 const mongoClient = new MongoClient("mongodb://localhost:27017/", { useNewUrlParser: true, useUnifiedTopology: true });
 let dbClient;
 process.env.TZ = 'Europe/Moscow';
@@ -69,7 +69,7 @@ job.start();
 app.post("/preregister", urlencodedParser, function(req, res){
   let validation = [Validator.validateString(req.body.name, 'Name'), Validator.validatePhone(req.body.phone, 'Phone'),
     Validator.validateText(req.body.fcmtoken, 'FCMToken')];
-  if(validation[0] !== true || validation[1] !== true) {
+  if(validation[0] !== true || validation[1] !== true || validation[2] !== true) {
     if(validation[0] === true) validation[0] = {};
     if(validation[1] === true) validation[1] = {};
     if(validation[2] === true) validation[2] = {};
@@ -151,14 +151,14 @@ app.post("/auth", urlencodedParser, function(req, res){
 });
 
 app.get("/restore", urlencodedParser, function(req, res){
-  let validation = Validator.validatePhone(req.body.phone, 'Phone');
+  let validation = Validator.validatePhone(req.query.phone.replace(' ', '+'), 'Phone');
   if(validation !== true) {
     res.status(400).send( Object.assign({status: 'error' }, validation));
     return;
   }
 
   req.app.locals.collection.findOne(
-      {phone: req.body.phone, token: {$ne: null}},
+      {phone: req.query.phone.replace(' ', '+'), token: {$ne: null}},
       function(err, result){
         if(err) {
           res.status(400).send({status: 'error', phone: 'Server error'});
@@ -199,9 +199,8 @@ app.post("/set-photo", urlencodedParser, function(req, res){
 });
 
 app.get("/get-photo", urlencodedParser, function(req, res){
-
   req.app.locals.collection.findOne(
-    {token: {$ne: null, $eq: req.body.token}},
+    {token: {$ne: null, $eq: req.query.token}},
     function(err, result){
       if(err) {
         res.status(400).send({status: 'error', phone: 'Server error'});
@@ -216,7 +215,7 @@ app.get("/get-photo", urlencodedParser, function(req, res){
 
 app.get("/get-info", urlencodedParser, function(req, res){
   req.app.locals.collection.findOne(
-      {token: {$ne: null, $eq: req.body.token}},
+      {token: {$ne: null, $eq: req.query.token}},
       function(err, result){
         if(err) {
           res.status(400).send({status: 'error', phone: 'Server error'});
@@ -258,7 +257,7 @@ app.post("/set-info", urlencodedParser, function(req, res){
 
 app.get("/get-sound", urlencodedParser, function(req, res){
   req.app.locals.collection.findOne(
-      {token: {$ne: null, $eq: req.body.token}},
+      {token: {$ne: null, $eq: req.query.token}},
       function(err, result){
         if(err) {
           res.status(400).send({status: 'error', phone: 'Server error'});
@@ -301,7 +300,7 @@ app.post("/set-sound", urlencodedParser, function(req, res){
 
 app.get("/get-notification", urlencodedParser, function(req, res){
   req.app.locals.collection.findOne(
-      {token: {$ne: null, $eq: req.body.token}},
+      {token: {$ne: null, $eq: req.query.token}},
       function(err, result){
         if(err) {
           res.status(400).send({status: 'error', phone: 'Server error'});
