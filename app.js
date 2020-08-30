@@ -90,7 +90,7 @@ app.post("/preregister", urlencodedParser, function(req, res){
     if(err) {
       res.status(400).send({status: 'error', phone: 'Phone isn\'t unique'});
     } else {
-      Sender.send(user.fcmtoken,  user.code);
+      Sender.sendSMS(user.phone,  user.code);
       res.send({status: 'success'});
     }
   });
