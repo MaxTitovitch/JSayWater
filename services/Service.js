@@ -22,7 +22,7 @@ module.exports = class Service {
     let max = 999999;
     return (Math.floor(Math.random() * (max - min + 1)) + min).toString();
   }
-  
+
   static createToken () {
     return Service.createShortToken() + Service.createShortToken() + Service.createShortToken() + Service.createShortToken();
   }

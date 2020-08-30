@@ -239,7 +239,7 @@ app.post("/set-info", urlencodedParser, function(req, res){
 
   req.app.locals.collection.findOneAndUpdate(
       {token: {$ne: null, $eq: req.body.token}},
-      { $set: {photo: req.body.photo, name: req.body.name}},
+      { $set: {phone: req.body.phone, name: req.body.name}},
       {
         returnOriginal: false
       },
