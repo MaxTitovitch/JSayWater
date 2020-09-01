@@ -34,18 +34,19 @@ module.exports = class Service {
             user: userName,
             pass: password,
             to: phone.substr(1),
-            txt: `Code: ${code}`
+            txt: code
         };
-        let query =  Object.keys(data).map(key => `${key}=${data[key]}`).join('&');;
+        console.log(data)
+        let query =  Object.keys(data).map(key => `${key}=${data[key]}`).join('&');
         let path = `https://api3.greensms.ru/sms/send?${query}`;
         axios.get(path)
             .then(function (response) {
                 console.log(response);
             })
             .catch(function (error) {
-                console.log(error.response.data);
+                console.log(error.response);
             });
-        // axios.get('http://api3.greensms.ru/sms/status?user=jsay&pass=jsay2020&id=bd414c1f-5c52-4aa2-aa22-119329e02110')
+        // axios.get('http://api3.greensms.ru/sms/status?user=jsay&pass=jsay2020&id=38e73b15-ca61-407c-b36e-cad936fbb04a')
         //     .then(function (response) {
         //         console.log(response);
         //     })

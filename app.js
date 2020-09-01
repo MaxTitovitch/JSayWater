@@ -59,7 +59,7 @@ var job = new CronJob('0 */1 * * * *', function() {
     if(results.length > 0) {
       console.log(new Date().toISOString() + ": Messages sent");
       for (let i = 0; i < results.length; i++) {
-        Sender.send(results[i].fcmtoken,  'Message');
+        Sender.send(results[i].fcmtoken,  'Прими 🚿');
       }
     }
   });
@@ -90,7 +90,7 @@ app.post("/preregister", urlencodedParser, function(req, res){
     if(err) {
       res.status(400).send({status: 'error', phone: 'Phone isn\'t unique'});
     } else {
-      Sender.sendSMS(user.phone,  user.code);
+      Sender.sendSMS(user.phone,  `Code: ${user.code}`);
       res.send({status: 'success'});
     }
   });
@@ -164,7 +164,8 @@ app.get("/restore", urlencodedParser, function(req, res){
           res.status(400).send({status: 'error', phone: 'Server error'});
         } else if(!result) {
           res.status(400).send({status: 'error', phone: 'User doesn\'t exist data'});
-        }else {
+        } else {
+          Sender.sendSMS(result.phone,  `Name: ${result.name}`);
           res.send({status: 'success', name: result.name});
         }
       }
