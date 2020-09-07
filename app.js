@@ -56,10 +56,12 @@ var CronJob = require('cron').CronJob;
 var job = new CronJob('0 */1 * * * *', function() {
   let notification_time = new Date().toLocaleTimeString().substr(0,5);
   app.locals.collection.find({notification_time: notification_time, sound: true, notification: true}).toArray(function(err, results){
-    if(results.length > 0) {
-      console.log(new Date().toISOString() + ": Messages sent");
-      for (let i = 0; i < results.length; i++) {
-        Sender.send(results[i].fcmtoken,  'Прими 🚿');
+    if(results) {
+      if(results.length > 0) {
+        console.log(new Date().toISOString() + ": Messages sent");
+        for (let i = 0; i < results.length; i++) {
+          Sender.send(results[i].fcmtoken,  'Прими 🚿');
+        }
       }
     }
   });
@@ -90,7 +92,7 @@ app.post("/preregister", urlencodedParser, function(req, res){
     if(err) {
       res.status(400).send({status: 'error', phone: 'Phone isn\'t unique'});
     } else {
-      Sender.sendSMS(user.phone,  `Code: ${user.code}`);
+      Sender.sendSMS(user.phone,  `Код: ${user.code} \nОтправитель: JSay`);
       res.send({status: 'success'});
     }
   });
@@ -165,7 +167,7 @@ app.get("/restore", urlencodedParser, function(req, res){
         } else if(!result) {
           res.status(400).send({status: 'error', phone: 'User doesn\'t exist data'});
         } else {
-          Sender.sendSMS(result.phone,  `Name: ${result.name}`);
+          Sender.sendSMS(result.phone,  `Имя: ${result.name} \nОтправитель: JSay`);
           res.send({status: 'success', name: result.name});
         }
       }
