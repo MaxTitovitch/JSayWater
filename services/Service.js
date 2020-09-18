@@ -9,11 +9,27 @@ module.exports = class Service {
       date_of_preregistration_end: '',
       photo: null,
       token: null,
-      fcmtoken: null,
+      fcmtoken: [],
       sound: false,
-      notification: false,
-      notification_time: null,
+      notification_stop: false,
+      notification_start: null,
+      notification_end: null,
+      notification_interval: 1,
+      notification_array: [],
       date_of_next_send: null,
+      weight: null,
+      target: null,
+      water: 0,
+      history: {
+        labels: [],
+        data: []
+      },
+      volume: {
+        half_glass: 100,
+        glass: 200,
+        cup: 300,
+        bottle: 500,
+      },
     }
   }
 
@@ -36,7 +52,7 @@ module.exports = class Service {
       service: 'gmail',
       auth: {
         user: 'sportcompanyminsk@gmail.com',
-        pass: 'awesomemax1998'
+        pass: 'awesomekpss2020'
       }
     });
     

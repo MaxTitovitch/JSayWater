@@ -28,7 +28,7 @@ mongoClient.connect(function(err, client){
     return console.error(err);
   }
   dbClient = client;
-  app.locals.collection = client.db("db").collection("users");
+  app.locals.collection = client.db("water").collection("users");
   app.listen(3000, function(){
     console.log(new Date().toISOString() + ": Server run...");
   });
@@ -54,13 +54,35 @@ app.use(function (req, res, next) {
 
 var CronJob = require('cron').CronJob;
 var job = new CronJob('0 */1 * * * *', function() {
-  let notification_time = new Date().toLocaleTimeString().substr(0,5);
-  app.locals.collection.find({notification_time: notification_time, notification: true}).toArray(function(err, results){
+  let date = new Date()
+  date.setDate(date.getDate() - 1)
+  date.toLocaleDateString().substr(0,5);
+  let notification_time = date.toLocaleTimeString().substr(0,5);
+  if(notification_time === '00:00') {
+    req.app.locals.collection.updateMany(
+      {},
+      { $addToSet: {history: {labels: date, data: "$water"}, $set: {water: 0 }}},
+      {
+        returnOriginal: false
+      },
+      function(err, result){
+        console.log(`${notification_time}: Water cleared, Labels added...`);
+      }
+    );
+  }
+  app.locals.collection.find({
+    notification_array: notification_time
+  }).toArray(function(err, results){
     if(results) {
       if(results.length > 0) {
-        console.log(new Date().toISOString() + ": Messages sent");
         for (let i = 0; i < results.length; i++) {
-          Sender.send(results[i].fcmtoken,  'Прими 🚿', results[i].sound);
+          if(results[i].notification_stop && results[i].water >= results[i].target) {
+            break;
+          }
+          console.log(`Message sent to: "${results[i].name}"...`);
+          for (let j = 0; j < results[i].fcmtoken.length; j++) {
+            Sender.send(results[i].fcmtoken[j],  'Выпей 🚿', results[i].sound);
+          }
         }
       }
     }
@@ -82,7 +104,7 @@ app.post("/preregister", urlencodedParser, function(req, res){
   const user = Service.getUser();
   user.name = req.body.name.trim();
   user.phone =  req.body.phone;
-  user.fcmtoken =  req.body.fcmtoken;
+  user.fcmtoken.push(req.body.fcmtoken);
   user.code =  Service.createCode();
   let date = new Date();
   date.setHours(date.getHours() + 2);
@@ -137,7 +159,33 @@ app.post("/set-fcmtoken", urlencodedParser, function(req, res){
 
   req.app.locals.collection.findOneAndUpdate(
       {token: {$ne: null, $eq: req.body.token}},
-      { $set: {fcmtoken: req.body.fcmtoken.trim()}},
+      { $addToSet: {fcmtoken: req.body.fcmtoken.trim()}},
+      {
+        returnOriginal: false
+      },
+      function(err, result){
+        if(err) {
+          res.status(400).send({status: 'error', photo: 'Server error'});
+        } else if(result.lastErrorObject.n !== 1) {
+          res.status(400).send({status: 'error', photo: 'Incorrect authentication'});
+        } else {
+          res.send({status: 'success'});
+        }
+      }
+  );
+
+});
+
+app.post("/reset-fcmtoken", urlencodedParser, function(req, res){
+  let validation = Validator.validateText(req.body.fcmtoken, 'FCMToken');
+  if(validation !== true) {
+    res.status(400).send(Object.assign({status: 'error', },validation));
+    return;
+  }
+
+  req.app.locals.collection.findOneAndUpdate(
+      {token: {$ne: null, $eq: req.body.token}},
+      {  $pull : {fcmtoken: {$in: [req.body.fcmtoken.trim()]}}},
       {
         returnOriginal: false
       },
@@ -327,37 +375,16 @@ app.post("/set-sound", urlencodedParser, function(req, res){
   );
 });
 
-app.get("/get-notification", urlencodedParser, function(req, res){
-  req.app.locals.collection.findOne(
-      {token: {$ne: null, $eq: req.query.token}},
-      function(err, result){
-        if(err) {
-          res.status(400).send({status: 'error', phone: 'Server error'});
-        } else if(!result) {
-          res.status(400).send({status: 'error', phone: 'Incorrect authentication'});
-        }else {
-          res.send({status: 'success', notification: result.notification, notification_time: result.notification_time});
-        }
-      }
-  );
-});
-
-app.post("/set-notification", urlencodedParser, function(req, res){
-  let validation = [Validator.validateBool(req.body.notification, 'Notification'),
-    Validator.validateTime(req.body.notification_time, 'Notification time')];
-  if(validation[0] !== true || validation[1] !== true) {
-    if(validation[0] === true) validation[0] = {};
-    if(validation[1] === true) validation[1] = {};
-    res.status(400).send( Object.assign({status: 'error' }, validation[0], validation[1]));
+app.post("/add-water", urlencodedParser, function(req, res){
+  let validation = Validator.validateNumber(req.body.water, 'Water');
+  if(validation !== true) {
+    res.status(400).send(Object.assign({status: 'error', },validation));
     return;
   }
 
-  let notification = req.body.notification;
-  notification = notification === 'true' ? true : (notification === 'false' ? false : notification);
-
   req.app.locals.collection.findOneAndUpdate(
       {token: {$ne: null, $eq: req.body.token}},
-      { $set: {notification: notification, notification_time: notification !== false ? req.body.notification_time : null}},
+      { $inc: {water: Number.parseInt(req.body.water)}},
       {
         returnOriginal: false
       },
@@ -370,6 +397,225 @@ app.post("/set-notification", urlencodedParser, function(req, res){
           res.send({status: 'success'});
         }
       }
+  );
+});
+
+app.post("/remove-water", urlencodedParser, function(req, res){
+  let validation = Validator.validateNumber(req.body.water, 'Water');
+  if(validation !== true) {
+    res.status(400).send(Object.assign({status: 'error', },validation));
+    return;
+  }
+
+  req.app.locals.collection.findOneAndUpdate(
+      {token: {$ne: null, $eq: req.body.token}},
+      { $inc: {water: -Number.parseInt(req.body.water)}},
+      {
+        returnOriginal: false
+      },
+      function(err, result){
+        if(err) {
+          res.status(400).send({status: 'error', phone: 'Server error'});
+        } else if(!result) {
+          res.status(400).send({status: 'error', phone: 'Incorrect authentication'});
+        }else {
+          res.send({status: 'success'});
+        }
+      }
+  );
+});
+
+app.get("/get-notification", urlencodedParser, function(req, res){
+  req.app.locals.collection.findOne(
+    {token: {$ne: null, $eq: req.query.token}},
+    function(err, result){
+      if(err) {
+        res.status(400).send({status: 'error', phone: 'Server error'});
+      } else if(!result) {
+        res.status(400).send({status: 'error', phone: 'Incorrect authentication'});
+      }else {
+        res.send({
+          status: 'success',
+          notification_stop: result.notification_stop,
+          notification_start: result.notification_start,
+          notification_end: result.notification_end,
+          notification_interval: result.notification_interval,
+        });
+      }
+    }
+  );
+});
+
+let calculateNotificationIntervals = function (start, end, interval) {
+  interval = Number.parseInt(interval);
+  let sHours = Number.parseInt(start.substr(0,2));
+  let eHours = Number.parseInt(end.substr(0,2));
+  let sMinutes = Number.parseInt(start.substr(3,2));
+  let eMinutes = Number.parseInt(end.substr(3,2));
+  let arrayTimes = [];
+
+  for (let i = sHours; i <= eHours; i += interval) {
+    if(i === eHours && sMinutes > eMinutes){
+      break;
+    }
+    arrayTimes.push(i + ':' + sMinutes);
+  }
+
+  return arrayTimes;
+}
+
+app.post("/set-notification", urlencodedParser, function(req, res){
+  let validation = [
+    Validator.validateBool(req.body.notification_stop, 'Notification stop'),
+    Validator.validateTime(req.body.notification_start, 'Notification time start'),
+    Validator.validateTime(req.body.notification_end, 'Notification time end'),
+    Validator.validateNumber(req.body.notification_interval, 'Notification interval'),
+  ];
+  if(validation[0] !== true || validation[1] !== true || validation[2] !== true || validation[3] !== true) {
+    if(validation[0] === true) validation[0] = {};
+    if(validation[1] === true) validation[1] = {};
+    if(validation[2] === true) validation[2] = {};
+    if(validation[3] === true) validation[3] = {};
+    res.status(400).send( Object.assign({status: 'error' }, validation[0], validation[1],validation[2],validation[3]));
+    return;
+  }
+
+  let notification_stop = req.body.notification_stop;
+  notification_stop = notification_stop === 'true' ? true : (notification_stop === 'false' ? false : notification_stop);
+
+  req.app.locals.collection.findOneAndUpdate(
+    {token: {$ne: null, $eq: req.body.token}},
+    { $set: {notification_stop: notification_stop, notification_start: req.body.notification_start,
+        notification_end: req.body.notification_end, notification_interval: req.body.notification_interval,
+        notification_array: calculateNotificationIntervals(req.body.notification_start, req.body.notification_end, req.body.notification_interval)}},
+    {
+      returnOriginal: false
+    },
+    function(err, result){
+      if(err) {
+        res.status(400).send({status: 'error', phone: 'Server error'});
+      } else if(!result) {
+        res.status(400).send({status: 'error', phone: 'Incorrect authentication'});
+      }else {
+        res.send({status: 'success'});
+      }
+    }
+  );
+});
+
+
+app.get("/get-volume", urlencodedParser, function(req, res){
+  req.app.locals.collection.findOne(
+    {token: {$ne: null, $eq: req.query.token}},
+    function(err, result){
+      if(err) {
+        res.status(400).send({status: 'error', phone: 'Server error'});
+      } else if(!result) {
+        res.status(400).send({status: 'error', phone: 'Incorrect authentication'});
+      }else {
+        res.send({
+          status: 'success',
+          volume: result.volume,
+        });
+      }
+    }
+  );
+});
+
+app.post("/set-volume", urlencodedParser, function(req, res){
+  let validation = [
+    Validator.validateNumber(req.body.half_glass, 'Half glass'),
+    Validator.validateNumber(req.body.glass, 'Glass'),
+    Validator.validateNumber(req.body.cup, 'Cup'),
+    Validator.validateNumber(req.body.bottle, 'Bottle'),
+  ];
+  if(validation[0] !== true || validation[1] !== true || validation[2] !== true || validation[3] !== true) {
+    if(validation[0] === true) validation[0] = {};
+    if(validation[1] === true) validation[1] = {};
+    if(validation[2] === true) validation[2] = {};
+    if(validation[3] === true) validation[3] = {};
+    res.status(400).send( Object.assign({status: 'error' }, validation[0], validation[1],validation[2],validation[3]));
+    return;
+  }
+
+  req.app.locals.collection.findOneAndUpdate(
+    {token: {$ne: null, $eq: req.body.token}},
+    { $set: {volume: {
+      half_glass: req.body.half_glass,
+      glass: req.body.glass,
+      cup: req.body.cup,
+      bottle: req.body.bottle,
+    }}},
+    {
+      returnOriginal: false
+    },
+    function(err, result){
+      if(err) {
+        res.status(400).send({status: 'error', phone: 'Server error'});
+      } else if(!result) {
+        res.status(400).send({status: 'error', phone: 'Incorrect authentication'});
+      }else {
+        res.send({status: 'success'});
+      }
+    }
+  );
+});
+
+app.get("/get-history", urlencodedParser, function(req, res){
+  req.app.locals.collection.findOne(
+    {token: {$ne: null, $eq: req.query.token}},
+    function(err, result){
+      if(err) {
+        res.status(400).send({status: 'error', phone: 'Server error'});
+      } else if(!result) {
+        res.status(400).send({status: 'error', phone: 'Incorrect authentication'});
+      }else {
+        res.send({status: 'success', history: result.history });
+      }
+    }
+  );
+});
+
+app.get("/get-weight", urlencodedParser, function(req, res){
+  req.app.locals.collection.findOne(
+    {token: {$ne: null, $eq: req.query.token}},
+    function(err, result){
+      if(err) {
+        res.status(400).send({status: 'error', phone: 'Server error'});
+      } else if(!result) {
+        res.status(400).send({status: 'error', phone: 'Incorrect authentication'});
+      }else {
+        res.send({status: 'success', weight: result.weight, target: result.target, });
+      }
+    }
+  );
+});
+
+app.post("/set-weight", urlencodedParser, function(req, res){
+  let validation = [Validator.validateNumber(req.body.weight, 'Weight'),
+    Validator.validateNumber(req.body.target, 'Target')];
+  if(validation[0] !== true || validation[1] !== true) {
+    if(validation[0] === true) validation[0] = {};
+    if(validation[1] === true) validation[1] = {};
+    res.status(400).send( Object.assign({status: 'error' }, validation[0], validation[1]));
+    return;
+  }
+
+  req.app.locals.collection.findOneAndUpdate(
+    {token: {$ne: null, $eq: req.body.token}},
+    { $set: {weight: Number.parseInt(req.body.weight), target: Number.parseInt(req.body.target)}},
+    {
+      returnOriginal: false
+    },
+    function(err, result){
+      if(err) {
+        res.status(400).send({status: 'error', phone: 'Server error'});
+      } else if(!result) {
+        res.status(400).send({status: 'error', phone: 'Incorrect authentication'});
+      }else {
+        res.send({status: 'success'});
+      }
+    }
   );
 });
 
@@ -419,6 +665,7 @@ app.post("/support", urlencodedParser, function(req, res){
   Service.sendEmail(req.body.message, req.body.email ).then((response) => {
       res.send({status: 'success'});
   }).catch((error) => {
+    console.log(error)
       res.status(400).send({status: 'error', email: 'Server error'});
   });
 
