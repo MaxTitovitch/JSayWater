@@ -4,7 +4,7 @@ const config = {
   mongodb: {
     url: "mongodb://localhost:27017",
 
-    databaseName: "db",
+    databaseName: "water",
 
     options: {
       useNewUrlParser: true, // removes a deprecation warning when connecting
