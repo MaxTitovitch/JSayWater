@@ -29,7 +29,7 @@ mongoClient.connect(function(err, client){
   }
   dbClient = client;
   app.locals.collection = client.db("water").collection("users");
-  app.listen(3000, function(){
+  app.listen(3001, function(){
     console.log(new Date().toISOString() + ": Server run...");
   });
 });
