@@ -1,11 +1,13 @@
 const express = require("express");
 const bodyParser = require("body-parser");
+const multer  = require('multer');
 const MongoClient = require("mongodb").MongoClient;
 const Service = require("./services/Service");
 const Validator = require("./services/Validator");
 const Sender = require("./services/Sender");
 const formData = require("express-form-data");
 const os = require("os");
+const fs = require('fs');
 
 const app = express();
 const urlencodedParser = bodyParser.urlencoded({extended: false});
@@ -13,15 +15,66 @@ const mongoClient = new MongoClient("mongodb://localhost:27017/", { useNewUrlPar
 let dbClient;
 process.env.TZ = 'Europe/Moscow';
 
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, __dirname + '/static/img/photo')
+  },
+  filename: function (req, file, cb) {
+    let name = Date.now() + '.' + file.originalname.split('.').reverse()[0];
+    req.body.photo = `/static/img/photo/${name}`;
+    cb(null, name)
+  }
+});
+
+const upload = multer({ storage: storage });
+
+app.post("/set-photo", upload.single('photo'),  function(req, res) {
+  let validation = Validator.validateText(req.body.photo, 'Photo');
+  if(validation !== true) {
+    res.status(400).send(Object.assign({status: 'error', },validation));
+    return;
+  }
+
+  req.app.locals.collection.findOne(
+    {token: {$ne: null, $eq: req.body.token}},
+    function(err, result){
+      let name = __dirname + result.photo;
+      fs.unlinkSync(name);
+    }
+  );
+
+  req.app.locals.collection.findOneAndUpdate(
+    {token: {$ne: null, $eq: req.body.token}},
+    { $set: {photo: req.body.photo === 'null' ? null : req.body.photo}},
+    {
+      returnOriginal: false
+    },
+    function(err, result){
+      if(err) {
+        res.status(400).send({status: 'error', photo: 'Server error'});
+      } else if(result.lastErrorObject.n !== 1) {
+        res.status(400).send({status: 'error', photo: 'Incorrect authentication'});
+      } else {
+        res.send({status: 'success'});
+      }
+    }
+  );
+
+});
+
+
 const options = {
-    uploadDir: os.tmpdir(),
-    autoClean: true
+  uploadDir: os.tmpdir(),
+  autoClean: true
 };
 
 app.use(formData.parse(options));
 app.use(formData.format());
 app.use(formData.stream());
 app.use(formData.union());
+
+app.use(express.static(__dirname + "/static"));
+
 
 mongoClient.connect(function(err, client){
   if(err) {
@@ -203,16 +256,15 @@ app.post("/reset-fcmtoken", urlencodedParser, function(req, res){
 });
 
 app.post("/auth", urlencodedParser, function(req, res){
-  let validation = [Validator.validateString(req.body.name, 'Name'), Validator.validatePhone(req.body.phone, 'Phone')];
-  if(validation[0] !== true || validation[1] !== true) {
+  let validation = [Validator.validatePhone(req.body.phone, 'Phone')];
+  if(validation[0] !== true) {
     if(validation[0] === true) validation[0] = {};
-    if(validation[1] === true) validation[1] = {};
-    res.status(400).send( Object.assign({status: 'error' }, validation[0], validation[1]));
+    res.status(400).send( Object.assign({status: 'error' }, validation[0]));
     return;
   }
 
   req.app.locals.collection.findOne(
-      {phone: req.body.phone, name: req.body.name, token: {$ne: null}},
+      {phone: req.body.phone, token: {$ne: null}},
       function(err, result){
         if(err) {
           res.status(400).send({status: 'error', phone: 'Server error'});
@@ -249,31 +301,6 @@ app.get("/restore", urlencodedParser, function(req, res){
 
 });
 
-app.post("/set-photo", urlencodedParser, function(req, res){
-  let validation = Validator.validateText(req.body.photo, 'Photo');
-  if(validation !== true) {
-    res.status(400).send(Object.assign({status: 'error', },validation));
-    return;
-  }
-
-  req.app.locals.collection.findOneAndUpdate(
-      {token: {$ne: null, $eq: req.body.token}},
-      { $set: {photo: req.body.photo === 'null' ? null : req.body.photo}},
-      {
-        returnOriginal: false
-      },
-      function(err, result){
-        if(err) {
-          res.status(400).send({status: 'error', photo: 'Server error'});
-        } else if(result.lastErrorObject.n !== 1) {
-          res.status(400).send({status: 'error', photo: 'Incorrect authentication'});
-        } else {
-          res.send({status: 'success'});
-        }
-      }
-  );
-
-});
 
 app.get("/get-photo", urlencodedParser, function(req, res){
   req.app.locals.collection.findOne(
