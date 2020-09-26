@@ -38,7 +38,7 @@ app.post("/set-photo", upload.single('photo'),  function(req, res) {
   req.app.locals.collection.findOne(
     {token: {$ne: null, $eq: req.body.token}},
     function(err, result){
-      let name = __dirname + result.photo;
+      let name = __dirname + '/' + result.photo;
       fs.unlinkSync(name);
     }
   );
